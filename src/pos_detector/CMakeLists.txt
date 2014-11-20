@@ -111,6 +111,7 @@ include_directories(
 
 ## Declare a cpp executable
  add_executable(pos_detector_node src/pos_pDetector.cpp)
+ add_executable(syncCam_node src/syncCam.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -118,6 +119,11 @@ include_directories(
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(pos_detector_node
+   ${catkin_LIBRARIES}
+   GL
+ )
+
+ target_link_libraries(syncCam_node
    ${catkin_LIBRARIES}
    GL
  )
