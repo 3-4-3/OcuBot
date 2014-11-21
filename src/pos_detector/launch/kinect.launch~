@@ -31,10 +31,11 @@
     		<param name="depth_frame_id" value="kinect2_depth_frame" />
 	</node>
 
-
-	<node pkg="pos_detector" type="syncCam_node" name="syncCam_node" output="screen" launch-prefix="$(arg launch_prefix)">
-		
+	<node pkg="pos_detector" type="syncCam_node" name="syncCam_node" output="screen" launch-prefix="$(arg launch_prefix)"> 
 	</node>
+	<!-- <node pkg="pos_detector" type="syncCam_node" name="syncCam_node" output="screen" launch-prefix="$(arg launch_prefix)"> -->
+		
+	<!-- </node> -->
 
 
 </launch>
