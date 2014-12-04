@@ -1,6 +1,6 @@
 
 #include "ros/ros.h"
-
+#include <tf/transform_broadcaster.h>
 
 #include <math.h>
 #include <sstream>
@@ -25,11 +25,73 @@
 typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::CompressedImage, sensor_msgs::CompressedImage> ApproximateTimePolicy;
 
 ros::NodeHandle* hRosNode;
+
+// RGB Subscribers of both cameras
 message_filters::Subscriber<sensor_msgs::CompressedImage> 	*hRosSubRGBVid1, *hRosSubRGBVid2, *hRosSubDepthVid;
+
+// Synchronizer
 message_filters::Synchronizer<ApproximateTimePolicy> *rosVideoSync;
 
+// RGB Publishers of both cameras after modifications
 image_transport::Publisher image_pub1, image_pub2;
 
+// STEREO CAMERA PARAMS
+// Camera matrix parameters from the stereo calibration
+cv::Mat cameraMatrix1, cameraMatrix2, distCoeffs1, distCoeffs2, T, R;
+// Parameters for stereoRectify & triangulatePoints 
+// http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
+cv::Mat projMatr1, projMatr2, R1, R2, Q, points4D, point4D;
+
+// For publishing the position of both cameras and the marker
+tf::Transform transformCam, transformMark;
+bool markerDet(false);
+
+// NUMBER COL and NUM ROW of the MARKER
+//int N_COL_M(8), N_ROW_M(6);
+int N_COL_M(4), N_ROW_M(3);
+
+	/** 
+	  * Set up the camera parameters
+	  * 
+	  * Get the projection matrix of both cameras from
+	  * the matrix parameters of the stereo calibration
+	  * 
+	  */
+	void getCameraParameters() {
+
+	// Camera matrix parameters from the stereo calibration
+	cameraMatrix1 	= (cv::Mat_<double>(3,3) << 	539.9870333531883, 0.0, 316.06859846488834, 0.0, 540.8581018714953, 237.18493024927105, 0.0, 0.0, 1.0);
+	cameraMatrix2 	= (cv::Mat_<double>(3,3) << 	538.0427145364514, 0.0, 311.61200664768387, 0.0, 538.2460939937, 242.80864483081996, 0.0, 0.0, 1.0);
+	distCoeffs1 	= (cv::Mat_<double>(1,5) << 	0.03687175708691474, -0.1165463510065852, 0.0007078365818213385, 0.0019659188026477773, 0.0);
+	distCoeffs2 	= (cv::Mat_<double>(1,5) << 	0.02848002165130857, -0.0939825217162638, 0.0014535214463736507, 0.00021012545630434183, 0.0);
+	T 		= (cv::Mat_<double>(3,1) << 	0.4775381948134212, 0.0030494524315920844, -0.03631081229513422);
+	R 		= (cv::Mat_<double>(3,3) << 	0.9812570988427612, 0.01663698230757995, -0.19198363677768202, -0.01835781400214137, 0.999805642468229, -0.007188042414634352, 0.1918267359774191, 0.010577717541562165, 0.9813718027617568);
+
+	// CAMERA RESOLUTION
+	cv::Size camera_resolution = cv::Size(640, 480);
+
+	// Projection matrix of both cameras
+	cv::stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, 
+					camera_resolution, R, T, R1, R2, projMatr1, projMatr2, Q, 
+					cv::CALIB_ZERO_DISPARITY, -1, cv::Size(), 0, 0 );
+
+	// Creates tf transform for the camera
+	tf::Vector3 origin;
+  	origin.setValue(T.at<double>(0,0),T.at<double>(1,0),T.at<double>(2,0));
+
+  	tf::Matrix3x3 tf3d;
+  	tf3d.setValue(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), 
+        		R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), 
+        		R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2));
+
+  	tf::Quaternion tfqt;
+  	tf3d.getRotation(tfqt);
+
+  	transformCam.setOrigin(origin);
+  	transformCam.setRotation(tfqt);
+
+
+	}
 
 	void syncVideoCallback(const sensor_msgs::CompressedImageConstPtr& rgbImg1, const sensor_msgs::CompressedImageConstPtr& rgbImg2) {
 
@@ -52,12 +114,10 @@ image_transport::Publisher image_pub1, image_pub2;
 	cvtColor(cv_rgb2, cv_gray2, CV_RGB2GRAY);
 	
 
-
-
 	// -------- FIND CHESSBOARD CORNERS --------
 	// http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#findchessboardcorners
 
-	cv::Size patternsize(8,6); //interior number of corners
+	cv::Size patternsize(N_COL_M,N_ROW_M); //interior number of corners
 	cv::Mat left = cv_gray1.clone(); //source image
 	cv::Mat right = cv_gray2.clone();
 	cv::vector<cv::Point2f> corners_l, corners_r; //this will be filled by the detected corners
@@ -83,22 +143,7 @@ image_transport::Publisher image_pub1, image_pub2;
 	// ----------------------------------------
 	
 
-	// Camera matrix parameters from the stereo calibration
-	cv::Mat cameraMatrix1 	= (cv::Mat_<double>(3,3) << 	533.2588540406424, 0.0, 305.4269987380971, 0.0, 533.5267980704926, 234.49660553682335, 0.0, 0.0, 1.0);
-	cv::Mat cameraMatrix2 	= (cv::Mat_<double>(3,3) << 	530.6046944518044, 0.0, 301.1964094473342, 0.0, 530.9279419363547, 261.0150759049696, 0.0, 0.0, 1.0);
-	cv::Mat distCoeffs1 	= (cv::Mat_<double>(1,5) << -0.05549635710799639, -0.04510391780805645, 0.0003586192451753303, -0.0048501238838964044, 0.0);
-	cv::Mat distCoeffs2 	= (cv::Mat_<double>(1,5) << -0.09846369782733233, 0.014397165901325767, 0.006069571494486711, 0.0023531755572130646, 0.0);
-	cv::Mat T 		= (cv::Mat_<double>(3,1) << 0.01667109250238205, 7.877564019959262e-05, -0.0004156408615162623);
-	cv::Mat R 		= (cv::Mat_<double>(3,3) << 0.9999794072254488, 0.006414151426626488, 0.0002092522795325808, -0.006417520130024028, 0.9993206169607065, 0.036292147258789126, 2.3673211032360872e-05, -0.036292742783498796, 0.9993412011224344);
 	
-	// Parameters for stereoRectify & triangulatePoints 
-	// http://docs.opencv.org/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html
-	cv::Mat projMatr1, projMatr2, R1, R2, Q, points4D, point4D;
-	
-	// Projection matrix of both cameras
-	cv::stereoRectify(cameraMatrix1, distCoeffs1, cameraMatrix2, distCoeffs2, 
-					cv_rgb1.size(), R, T, R1, R2, projMatr1, projMatr2, Q, 
-					cv::CALIB_ZERO_DISPARITY, -1, cv::Size(), 0, 0 );
 	
 	// Transform chessboard corners to Matrix
 	cv::Mat points_l = cv::Mat(2, corners_l.size(), CV_32F);
@@ -132,6 +177,25 @@ image_transport::Publisher image_pub1, image_pub2;
 		cv::triangulatePoints(projMatr1, projMatr2, 
 					points_l, points_r, points4D);
 
+		///	DEBUG
+		#if 1
+		std::cout << "Points4D: " 	<< std::endl << points4D 	<< std::endl 
+			  << "Size Points: "	<< std::endl << points4D.size()	<< std::endl;
+		#endif
+
+		// We divide the first 3 components by the 4th to get the actual coordinates
+		//cv::convertPointsFromHomogeneous(points4D, points4D);
+		cv::Mat lastRow = points4D.row( 3 );
+		cv::Mat tmp;
+		repeat(lastRow, 4, 1, tmp );  // create a tmp matrix of 4xN whose elements are repeated elements of the last row of points4D
+		points4D = points4D / tmp;
+		
+		#if 0
+		std::cout << "Points4D: " 	<< std::endl << points4D 	<< std::endl 
+			  << "Size Points: "	<< std::endl << points4D.size()	<< std::endl;
+		std::cout << "tmp: " 		<< std::endl << tmp 		<< std::endl;
+		#endif
+
 		/*   -----    GETTING THE MEAN BEFORE TRIANGULATION -----------------
 			cv::triangulatePoints(projMatr1, projMatr2, 
 					mean_cL, mean_cR, point4D);*/// ------------------
@@ -142,14 +206,83 @@ image_transport::Publisher image_pub1, image_pub2;
 	
 		///	DEBUG
 		#if 1
-
-		std::cout << "Points4D: " 	<< std::endl << points4D 	<< std::endl 
-			  << "Size Points: "	<< std::endl << points4D.size()	<< std::endl;
-
+		//std::cout << "Points4D: " 	<< std::endl << points4D 	<< std::endl 
+		//	  << "Size Points: "	<< std::endl << points4D.size()	<< std::endl;
 		std::cout << "Mean Position: " 	<< std::endl << mean_Hom  	<< std::endl
 			  << "Size meanP: "	<< std::endl << mean_Hom.size()	<< std::endl;
-
+		//std::cout << "Point 1: " 	<< std::endl << points4D.at<float>(0,1) << " " 
+		//				<< points4D.at<float>(1,1) << " " << points4D.at<float>(2,1) << std::endl;
 		#endif
+
+		// We get the angle of the marker by getting the mean vector between a point and the next point
+		// in the same row.
+		tf::Vector3 markDirection;
+
+		// We create a matrix to store every (horizontal) direction between two points in the marker
+		cv::Mat markDir = cv::Mat(3, (N_COL_M-1)*N_ROW_M , CV_32F);
+		// index of the new Matrix
+		int index = 0;
+		for(int n_row=0; n_row < N_ROW_M; n_row++) {
+			for(int n_col=0; n_col < N_COL_M-1; n_col++) {
+				// position in the 4xN matrix of the origin point of the difference vector
+				int index_origin = n_col + n_row*N_COL_M;
+				// x coordinate diference
+				markDir.at<float>(0,index) = points4D.at<float>(0,index_origin+1) - points4D.at<float>(0,index_origin);
+				// y coordinate diference
+				markDir.at<float>(1,index) = points4D.at<float>(1,index_origin+1) - points4D.at<float>(1,index_origin);
+				// z coordinate diference
+				markDir.at<float>(2,index) = points4D.at<float>(2,index_origin+1) - points4D.at<float>(2,index_origin);
+				index++;
+			}
+		}
+		// We compute the mean of the matrix to get the mean direction vector
+		cv::Mat mark_Dir_mean;
+		cv::reduce(markDir, mark_Dir_mean, CV_REDUCE_AVG, 1);
+		markDirection.setValue(mark_Dir_mean.at<float>(0,0),mark_Dir_mean.at<float>(0,1),mark_Dir_mean.at<float>(0,2));
+		
+		/// DEBUG
+		#if 0
+		std::cout << "Points4D: z - coordinate" 	<< std::endl << points4D.row(2) 	<< std::endl;
+		std::cout << "markDir: " 	<< std::endl << markDir 	<< std::endl;
+		std::cout << "mark_Dir_Vector: " 	<< mark_Dir_mean 	<< std::endl;
+		std::cout << "markDirection: " 		<< mark_Dir_mean.at<float>(0,0) 	<< " " 
+						<< mark_Dir_mean.at<float>(0,1) 		<< " " 
+						<< mark_Dir_mean.at<float>(0,2) 		<< std::endl;
+		#endif
+
+		// Creates tf transform for the marker
+		// POSITION
+		tf::Vector3 origin;
+  		origin.setValue(mean_Hom.at<float>(0,0),mean_Hom.at<float>(0,1),mean_Hom.at<float>(0,2));
+		transformMark.setOrigin(origin);
+		
+		// ROTATION
+		tf::Vector3 cameraDirection;
+		cameraDirection.setValue(0,0,1);
+
+		tf::Vector3 right_markD_vector = markDirection.cross(cameraDirection);
+		right_markD_vector.normalized();
+		double theta = markDirection.dot(cameraDirection);
+		double angle_rotation = -1.0*acos(theta);
+
+		/// DEBUG
+		#if 0
+		std::cout << "theta" 		<< theta 	<< std::endl;
+		std::cout << "angle_rotation: " 	<< angle_rotation 	<< std::endl;
+		std::cout << "mark_Dir_Vector: " 	<< mark_Dir_mean 	<< std::endl;
+		std::cout << "right_markD_vector: " 		<< right_markD_vector.x() 	<< " " 
+						<< right_markD_vector.y() 		<< " " 
+						<< right_markD_vector.z() 		<< std::endl;
+		#endif
+
+		// Create quaternion
+		tf::Quaternion tfqt(right_markD_vector, angle_rotation);
+
+  		transformMark.setRotation(tfqt);
+		
+		// MARKER DETECTED
+		markerDet = true;
+
 	}
 
 	/*
@@ -206,6 +339,8 @@ int main(int argc, char **argv)
 
 	image_transport::ImageTransport it(n);
 
+	static tf::TransformBroadcaster br;
+
   /**
    * 	Subscribes to the rgb and depth compressed channel of the camera
    */
@@ -223,11 +358,14 @@ int main(int argc, char **argv)
 
   rosVideoSync->registerCallback(boost::bind(&syncVideoCallback, _1, _2));
 
-  
+  // GET CAMERA PARAMETERS
+  getCameraParameters();
+
+  // PUBLISHERS
   image_pub1 = it.advertise("/left", 1);
   image_pub2 = it.advertise("/right", 1);
 
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(25); // Number in hz
 
   /**
    * A count of how many messages we have sent. This is used to create
@@ -237,8 +375,14 @@ int main(int argc, char **argv)
   while (ros::ok())
   {
     
-    
     ros::spinOnce();
+
+    // Send position of cameras
+    br.sendTransform(tf::StampedTransform(transformCam, ros::Time::now(), "camera_left", "camera_right"));
+    if(markerDet) {
+		markerDet = false;
+		//br.sendTransform(tf::StampedTransform(transformMark, ros::Time::now(), "camera_left", "marker"));
+    }
 
     loop_rate.sleep();
     ++count;

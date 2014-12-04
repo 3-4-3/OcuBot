@@ -40,7 +40,6 @@ void syncVideoCallback(const sensor_msgs::ImageConstPtr& rgbImg1, const sensor_m
 	newImg1.step 		= rgbImg1->step;
 	newImg1.data  		= rgbImg1->data;
 
-	 std::cout << "GETTING VIDEO SIGNAL" << std::endl;
 
 	image_pub1.publish( newImg1);
 	image_pub2.publish( rgbImg2);
