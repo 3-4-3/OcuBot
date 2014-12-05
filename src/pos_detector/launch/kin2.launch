@@ -12,7 +12,7 @@
 		<remap from="ir" to="camera2/ir/image_raw" />
 		<remap from="camera/depth_registered" to="camera2/depth_registered" />
 
- 		<param name="rgb_frame_id" value="kinect2_depth_rgb" />
+ 		<param name="rgb_frame_id" value="camera_right" />
     		<param name="depth_frame_id" value="kinect2_depth_frame" />
 
 	</node>
@@ -52,6 +52,8 @@
   	</node>
 
 
+
+
 	<node name="ar_pose2" pkg="ar_pose" type="ar_single" respawn="false"
    	 output="screen">
 
@@ -68,5 +70,9 @@
 
 		<param name="rgb_frame_id" value="camera_right" />
   	</node>
+
+		<node name="mapFrame" pkg="pos_detector" type="mapFrame_node"
+   	 output="screen" launch-prefix="$(arg launch_prefix)">
+	</node>
 
 </launch>

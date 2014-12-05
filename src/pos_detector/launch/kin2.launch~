@@ -12,7 +12,7 @@
 		<remap from="ir" to="camera2/ir/image_raw" />
 		<remap from="camera/depth_registered" to="camera2/depth_registered" />
 
- 		<param name="rgb_frame_id" value="kinect2_depth_rgb" />
+ 		<param name="rgb_frame_id" value="camera_right" />
     		<param name="depth_frame_id" value="kinect2_depth_frame" />
 
 	</node>
@@ -40,7 +40,7 @@
 		<remap from="camera/image_raw" to="camera1/rgb/image" />
 		<remap from="camera/camera_info" to="camera1/rgb/camera_info" />
    	 	<param name="marker_pattern" type="string" value="$(find ar_pose)/data/4x4/4x4_91.patt"/>
-    		<param name="marker_width" type="double" value="80.0"/>
+    		<param name="marker_width" type="double" value="200.0"/>
     		<param name="marker_center_x" type="double" value="0.0"/>
     		<param name="marker_center_y" type="double" value="0.0"/>
     		<param name="threshold" type="int" value="100"/>
@@ -50,6 +50,10 @@
 
 		<param name="rgb_frame_id" value="camera_left" />
   	</node>
+
+	<node name="mapFrame" pkg="pos_detector" type="mapFrame_node"
+   	 output="screen" launch-prefix="$(arg launch_prefix)">
+	</node>
 
 
 	<node name="ar_pose2" pkg="ar_pose" type="ar_single" respawn="false"
