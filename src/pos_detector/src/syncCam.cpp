@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 
   rosVideoSync = 
 			new message_filters::Synchronizer<ApproximateTimePolicy>
-				(ApproximateTimePolicy(15), *hRosSubRGBVid1, *hRosSubRGBVid2);
+				(ApproximateTimePolicy(7), *hRosSubRGBVid1, *hRosSubRGBVid2);
 
   rosVideoSync->registerCallback(boost::bind(&syncVideoCallback, _1, _2));
 

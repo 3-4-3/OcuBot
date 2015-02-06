@@ -49,6 +49,8 @@
   <build_depend>tf</build_depend>
   <build_depend>message_filters</build_depend>
   <build_depend>cv_bridge</build_depend>
+  <build_depend>ar_pose</build_depend>
+
   <run_depend>image_transport</run_depend>
   <run_depend>openni_launch</run_depend>
   <run_depend>roscpp</run_depend>
@@ -57,7 +59,9 @@
   <run_depend>std_msgs</run_depend>
   <run_depend>tf</run_depend>
   <run_depend>message_filters</run_depend>
-  <run_depend>cv_bridge </run_depend>
+  <run_depend>cv_bridge</run_depend>
+  <run_depend>ar_pose</run_depend>
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->

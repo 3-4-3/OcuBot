@@ -7,12 +7,12 @@
 	<node pkg="openni2_camera" type="openni2_camera_node" name="openni_node2" output="screen" launch-prefix="$(arg launch_prefix)">
 
 		<param name="device_id" value="#1"/>
-   		<remap from="depth" to="camera1/depth" />
-		<remap from="rgb" to="camera1/rgb" />
-		<remap from="ir" to="camera1/ir/image_raw" />
-		<remap from="camera/depth_registered" to="camera1/depth_registered" />
+   		<remap from="depth" to="camera2/depth" />
+		<remap from="rgb" to="camera2/rgb" />
+		<remap from="ir" to="camera2/ir/image_raw" />
+		<remap from="camera/depth_registered" to="camera2/depth_registered" />
 
- 		<param name="rgb_frame_id" value="camera_left" />
+ 		<param name="rgb_frame_id" value="camera_right" />
     		<param name="depth_frame_id" value="kinect2_depth_frame" />
 
 	</node>
@@ -47,9 +47,25 @@
     		<param name="use_history" type="bool" value="true"/>
 		<param name="marker_frame" value="global" />
 	<!-- 	<param name="reverse_transform" value="true" />	-->
-		<remap from="ar_pose_marker" to="ar_pose/cam1/global" />
 
 		<param name="rgb_frame_id" value="camera_left" />
+  	</node>
+
+	<node name="ar_pose_global2" pkg="ar_pose" type="ar_single" respawn="false"
+   	 output="screen">
+
+		<remap from="camera/image_raw" to="camera2/rgb/image" />
+		<remap from="camera/camera_info" to="camera2/rgb/camera_info" />
+   	 	<param name="marker_pattern" type="string" value="$(find ar_pose)/data/4x4/4x4_91.patt"/>
+    		<param name="marker_width" type="double" value="200.0"/>
+    		<param name="marker_center_x" type="double" value="0.0"/>
+    		<param name="marker_center_y" type="double" value="0.0"/>
+    		<param name="threshold" type="int" value="100"/>
+    		<param name="use_history" type="bool" value="true"/>
+		<param name="marker_frame" value="global" />
+	 	<param name="reverse_transform" value="true" />	
+
+		<param name="rgb_frame_id" value="camera_right" />
   	</node>
 
 
@@ -74,6 +90,10 @@
    	 output="screen" launch-prefix="$(arg launch_prefix)">
 	</node>
 
+	<node name="mapFrameR" pkg="pos_detector" type="mapFrameR_node"
+   	 output="screen" launch-prefix="$(arg launch_prefix)">
 
+	
+	</node>
 
 </launch>

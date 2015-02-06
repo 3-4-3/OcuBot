@@ -1,0 +1,18 @@
+How to start RocuBot by putting 2 streams on scene:
+
+Start 2 devices and plug one kinect in each device
+
+DEVICE 1
+1st - roscore
+
+DEVICE 2
+2nd - open two terminal tabs and go to /Ocubot/src/roculus and in both do:
+3rd - source ../../devel/setup.bash 						(to make sure we use the new version of roculus)
+4th - export ROS_MASTER_URI of device n1 					(to make sure we connect to the other device)
+5th - run in 1st terminal: roslaunch roculus kin1.launch 			(it will start streaming the 1st camera images)
+
+DEVICE 1
+6th- roslaunch pos_detector kin2.launch						(the 2nd camera will be on now and data will be publised in tf)
+
+DEVICE 2
+7th - run in 2nd terminal: rosrun roculus roculus_node 				(it will start the app)

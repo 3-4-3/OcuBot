@@ -1,3 +1,6 @@
+
+<!-- 	AR POSE WILL PUBLISH IN TOPIC INSTEAD OF TF	-->
+
 <launch>
 
 	<arg name="debug" default="false"/>
@@ -7,12 +10,12 @@
 	<node pkg="openni2_camera" type="openni2_camera_node" name="openni_node2" output="screen" launch-prefix="$(arg launch_prefix)">
 
 		<param name="device_id" value="#1"/>
-   		<remap from="depth" to="camera1/depth" />
-		<remap from="rgb" to="camera1/rgb" />
-		<remap from="ir" to="camera1/ir/image_raw" />
-		<remap from="camera/depth_registered" to="camera1/depth_registered" />
+   		<remap from="depth" to="camera2/depth" />
+		<remap from="rgb" to="camera2/rgb" />
+		<remap from="ir" to="camera2/ir/image_raw" />
+		<remap from="camera/depth_registered" to="camera2/depth_registered" />
 
- 		<param name="rgb_frame_id" value="camera_left" />
+ 		<param name="rgb_frame_id" value="camera_right" />
     		<param name="depth_frame_id" value="kinect2_depth_frame" />
 
 	</node>
@@ -30,6 +33,8 @@
     		<param name="use_history" type="bool" value="true"/>
 		<param name="marker_frame" value="marker" />
 	<!-- 	<param name="reverse_transform" value="true" />	-->
+		<param name="publish_tf" value="false" />
+		<remap from="ar_pose_marker" to="ar_pose/cam1/marker1" />
 
 		<param name="rgb_frame_id" value="camera_left" />
   	</node>
@@ -47,9 +52,29 @@
     		<param name="use_history" type="bool" value="true"/>
 		<param name="marker_frame" value="global" />
 	<!-- 	<param name="reverse_transform" value="true" />	-->
+		<param name="publish_tf" value="false" />
 		<remap from="ar_pose_marker" to="ar_pose/cam1/global" />
 
 		<param name="rgb_frame_id" value="camera_left" />
+  	</node>
+
+	<node name="ar_pose_global" pkg="ar_pose" type="ar_single" respawn="false"
+   	 output="screen">
+
+		<remap from="camera/image_raw" to="camera2/rgb/image" />
+		<remap from="camera/camera_info" to="camera2/rgb/camera_info" />
+   	 	<param name="marker_pattern" type="string" value="$(find ar_pose)/data/4x4/4x4_91.patt"/>
+    		<param name="marker_width" type="double" value="200.0"/>
+    		<param name="marker_center_x" type="double" value="0.0"/>
+    		<param name="marker_center_y" type="double" value="0.0"/>
+    		<param name="threshold" type="int" value="100"/>
+    		<param name="use_history" type="bool" value="true"/>
+		<param name="marker_frame" value="global" />
+	<!-- 	<param name="reverse_transform" value="true" />	-->
+		<param name="publish_tf" value="false" />
+		<remap from="ar_pose_marker" to="ar_pose/cam2/global" />
+
+		<param name="rgb_frame_id" value="camera_right" />
   	</node>
 
 
@@ -66,11 +91,13 @@
     		<param name="use_history" type="bool" value="true"/>
 		<param name="marker_frame" value="ar_marker" />
 	<!-- 	<param name="reverse_transform" value="true" />	-->
+		<param name="publish_tf" value="false" />
+		<remap from="ar_pose_marker" to="ar_pose/cam2/marker1" />
 
 		<param name="rgb_frame_id" value="camera_right" />
   	</node>
 
-		<node name="mapFrame" pkg="pos_detector" type="mapFrame_node"
+		<node name="marker_system_node" pkg="pos_detector" type="marker_system_node"
    	 output="screen" launch-prefix="$(arg launch_prefix)">
 	</node>
 

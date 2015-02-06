@@ -4,9 +4,6 @@
  *	
  *	The map frame has a different angle of the global frame (big marker)
  *	and same position to make it easier to create the ogre scene.
- *
- *	Author: Carlos Pérez
- *
  */
 #include "ros/ros.h"
 #include <tf/transform_broadcaster.h>
@@ -64,8 +61,8 @@ int main(int argc, char **argv)
 		if(count == 0) std::cout << "-- Waiting for the tf data --" << std::endl;
 
 		ros::Time now = ros::Time::now();
-    		tfListener.waitForTransform("global", "camera_left", now, ros::Duration(1.0) );
-    		tfListener.lookupTransform("global", "camera_left", now, vdTransform);
+    		tfListener.waitForTransform("global", "camera_right", now, ros::Duration(1.0) );
+    		tfListener.lookupTransform("global", "camera_right", now, vdTransform);
 		if(count == 0) std::cout << "-- Receiving tf data --" << std::endl;
 		count++;
 
@@ -91,7 +88,7 @@ int main(int argc, char **argv)
 
     } else {
 
-	 br.sendTransform(tf::StampedTransform(meanGlobal, ros::Time::now(), "mean_global", "camera_left"));
+	 br.sendTransform(tf::StampedTransform(meanGlobal, ros::Time::now(), "mean_global", "camera_right"));
 
     }
 

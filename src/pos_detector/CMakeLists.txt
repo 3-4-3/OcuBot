@@ -13,8 +13,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   message_filters
-  cv_bridge 
+  cv_bridge
+  
 )
+
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -102,6 +105,7 @@ catkin_package(
 include_directories(
   ./include
   ${catkin_INCLUDE_DIRS}
+  ./../ar_tools/ar_pose/msg_gen/cpp/include/
 )
 
 ## Declare a cpp library
@@ -113,6 +117,8 @@ include_directories(
  add_executable(pos_detector_node src/pos_pDetector.cpp)
  add_executable(syncCam_node src/syncCam.cpp)
  add_executable(mapFrame_node src/mapFrame.cpp)
+ add_executable(mapFrameR_node src/mapFrameR.cpp)
+ add_executable(marker_system_node src/marker_system.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -130,6 +136,14 @@ include_directories(
  )
 
  target_link_libraries(mapFrame_node
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(mapFrameR_node
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(marker_system_node
    ${catkin_LIBRARIES}
  )
 

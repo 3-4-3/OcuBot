@@ -13,7 +13,7 @@
 #include <sstream>
 
 # define M_PI           3.14159265358979323846  /* pi */
-# define NUMBER_TF       100 /* Number of times that we get a tf to get the mean value */  
+# define NUMBER_TF       20 /* Number of times that we get a tf to get the mean value */  
 
 /**
  * Main method for initialice the ROS node
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 		if(count == 0) std::cout << "-- Waiting for the tf data --" << std::endl;
 
 		ros::Time now = ros::Time::now();
-    		tfListener.waitForTransform("global", "camera_left", now, ros::Duration(100.0) );
+    		tfListener.waitForTransform("global", "camera_left", now, ros::Duration(1.0) );
     		tfListener.lookupTransform("global", "camera_left", now, vdTransform);
 		if(count == 0) std::cout << "-- Receiving tf data --" << std::endl;
 		count++;

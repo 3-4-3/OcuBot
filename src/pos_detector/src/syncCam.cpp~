@@ -79,14 +79,14 @@ int main(int argc, char **argv)
 
   hRosSubRGBVid1 = 
 			new message_filters::Subscriber<sensor_msgs::Image>
-				(*hRosNode, "/camera1/rgb/image_raw/image", 1);
+				(*hRosNode, "/camera1/rgb/image", 1);
   hRosSubRGBVid2 = 
 			new message_filters::Subscriber<sensor_msgs::Image>
-				(*hRosNode, "/camera2/rgb/image_raw/image", 1);
+				(*hRosNode, "/camera2/rgb/image", 1);
 
   rosVideoSync = 
 			new message_filters::Synchronizer<ApproximateTimePolicy>
-				(ApproximateTimePolicy(15), *hRosSubRGBVid1, *hRosSubRGBVid2);
+				(ApproximateTimePolicy(10), *hRosSubRGBVid1, *hRosSubRGBVid2);
 
   rosVideoSync->registerCallback(boost::bind(&syncVideoCallback, _1, _2));
 

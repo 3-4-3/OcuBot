@@ -47,11 +47,10 @@
     		<param name="use_history" type="bool" value="true"/>
 		<param name="marker_frame" value="global" />
 	<!-- 	<param name="reverse_transform" value="true" />	-->
+		<remap from="ar_pose_marker" to="ar_pose/cam1/global" />
 
 		<param name="rgb_frame_id" value="camera_left" />
   	</node>
-
-
 
 
 	<node name="ar_pose2" pkg="ar_pose" type="ar_single" respawn="false"
@@ -74,5 +73,7 @@
 		<node name="mapFrame" pkg="pos_detector" type="mapFrame_node"
    	 output="screen" launch-prefix="$(arg launch_prefix)">
 	</node>
+
+
 
 </launch>
