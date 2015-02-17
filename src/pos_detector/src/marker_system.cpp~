@@ -24,7 +24,6 @@
 #include "marker_system.h"
 
 
-
 /**
  * Main method for initialice the ROS node
  */
@@ -51,7 +50,8 @@ int main(int argc, char **argv)
 					("ar_pose/cam1/marker1", 1, boost::bind(&marker_Callback, _1, 1, 1)));
 	marker1_cam2	=	new ros::Subscriber(n.subscribe<ar_pose::ARMarker>
 					("ar_pose/cam2/marker1", 1, boost::bind(&marker_Callback, _1, 2, 1)));
-
+	odom_sub	=	new ros::Subscriber(n.subscribe<nav_msgs::Odometry>
+					("odom", 5, boost::bind(&odom_Callback, _1)));
 
 
 	std::cout << "-- Waiting for the tf data --" << std::endl;
@@ -75,6 +75,13 @@ int main(int argc, char **argv)
 	 br->sendTransform(tf::StampedTransform(global_to_cam2.inverse(), ros::Time::now(), "mean_global", "camera_right"));
     }
 
+	// Republish marker frame
+	if(n_camera == 1 ) {
+		br->sendTransform(tf::StampedTransform(cam_to_robot, ros::Time::now(), "camera_left", "marker"));
+	} else if (n_camera == 2 ) {
+		br->sendTransform(tf::StampedTransform(cam_to_robot, ros::Time::now(), "camera_right", "marker"));
+	}
+
 
 
     // Send position map frame
@@ -89,7 +96,7 @@ int main(int argc, char **argv)
 
 
 void create_map_frame(void) {
-	tf::Quaternion tfqt,tfqt2;
+	tf::Quaternion tfqt,tfqt2; // QUITAR TFQT2
 	//double yaw(0.0), pitch(-M_PI / 2.0) ,roll(0.0);
 	double yaw(M_PI), pitch(M_PI / 2.0) ,roll(0.0);
 	tfqt.setEuler 	( 0.0, pitch, 0.0 ) ;	
@@ -101,6 +108,27 @@ void create_map_frame(void) {
 
 
 void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_number) {
+
+
+	// First marker detection
+	if(n_camera == 0)
+	n_camera = camera;
+	// Only one camera will update the tf
+	// In case that camera has been inactive for a while the other
+	// will take over the control of updating the pose of the marker
+	if(n_camera != camera) {
+		n_times++;
+		if(n_times > TIME_LIMIT) {
+			if(n_camera == 1) n_camera = 2;
+			else if(n_camera == 2) n_camera = 1;
+			n_times = 0;
+		} else {
+			// We don't update the information in tf
+			return; 
+		}
+	} else {
+		n_times = 0;
+	}
 
 	tf::Vector3 position(marker->pose.pose.position.x, marker->pose.pose.position.y, marker->pose.pose.position.z);
 	tf::Quaternion q(marker->pose.pose.orientation.x, marker->pose.pose.orientation.y,
@@ -123,14 +151,20 @@ void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_
 		std::cout << "Fixing cam position - marker: " << m_number << " cam: " << camera << std::endl;
 	}
 
-	transform.setOrigin( position );
-	transform.setRotation( q );
+	cam_to_robot.setOrigin( position );
+	cam_to_robot.setRotation( q );
 
 	if(camera == 1 && m_number == 1) {
-		br->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_left", "marker"));
+		br->sendTransform(tf::StampedTransform(cam_to_robot, ros::Time::now(), "camera_left", "marker"));
 	} else if (camera == 2 && m_number == 1) {
-		br->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "camera_right", "marker"));
+		br->sendTransform(tf::StampedTransform(cam_to_robot, ros::Time::now(), "camera_right", "marker"));
 	}
+
+
+	// Save the odom position in this instant
+	prev_pos_x  	= 	odom_pos_x;
+	prev_pos_y  	= 	odom_pos_y;
+	prev_pos_th 	= 	odom_pos_th; 
 }
 
 void global_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera) {
@@ -197,5 +231,48 @@ void global_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera) {
 		}
     	}
 
+}
+
+
+
+void odom_Callback(const nav_msgs::OdometryConstPtr& odometry) {
+	
+	// Save the odometry
+	odom_pos_x 	= odometry->pose.pose.position.x;
+	odom_pos_y 	= odometry->pose.pose.position.y; 
+	odom_pos_th 	= tf::getYaw(odometry->pose.pose.orientation);
+
+	std::cout << "getYaw " << odom_pos_th << std::endl;
+
+	// Difference between this odometry and the odometry when the marker was found
+	double x_dif, y_dif, th_dif;
+	// Real position of the robot compared to the last position of the marker
+	double final_x, final_y;
+
+	x_dif 	= odom_pos_x - prev_pos_x; 
+	y_dif 	= odom_pos_y - prev_pos_y;
+	th_dif 	= odom_pos_th - prev_pos_th;
+
+	//std::cout << "odom_pos_th " 	<< odom_pos_th 	<< std::endl;
+	//std::cout << "prev_pos_th " 	<< prev_pos_th 	<< std::endl;
+	//std::cout << "th_dif " 		<< th_dif 	<< std::endl;
+
+	// Transform the vector difference into polar coordinates
+	double module, p_angle;
+	module 	= sqrt(x_dif*x_dif + y_dif*y_dif);
+	p_angle = atan2(y_dif, x_dif);
+
+	// Positions compared to the previous marker pose
+	final_x	= module * cos(p_angle-prev_pos_th);
+	final_y	= module * sin(p_angle-prev_pos_th);
+	
+	tf::Vector3 position(final_x, final_y, 0);
+	tf::Quaternion odom_quat = tf::createQuaternionFromYaw(th_dif);
+	
+	transform.setOrigin( position );
+	transform.setRotation( odom_quat );
+
+	// Send the transform of the pose based on the odometry
+	br->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "marker", "you_bot"));
 }
 
