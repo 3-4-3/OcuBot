@@ -39,7 +39,7 @@
 		<param name="rgb_frame_id" value="camera_left" />
   	</node>
 
-	<node name="ar_pose_global" pkg="ar_pose" type="ar_single" respawn="false"
+	<node name="ar_pose_global1" pkg="ar_pose" type="ar_single" respawn="false"
    	 output="screen">
 
 		<remap from="camera/image_raw" to="camera1/rgb/image" />
@@ -58,7 +58,7 @@
 		<param name="rgb_frame_id" value="camera_left" />
   	</node>
 
-	<node name="ar_pose_global" pkg="ar_pose" type="ar_single" respawn="false"
+	<node name="ar_pose_global2" pkg="ar_pose" type="ar_single" respawn="false"
    	 output="screen">
 
 		<remap from="camera/image_raw" to="camera2/rgb/image" />

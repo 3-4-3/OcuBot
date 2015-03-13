@@ -119,6 +119,7 @@ include_directories(
  add_executable(mapFrame_node src/mapFrame.cpp)
  add_executable(mapFrameR_node src/mapFrameR.cpp)
  add_executable(marker_system_node src/marker_system.cpp)
+ add_executable(app_msys_node src/app_msys.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -144,6 +145,10 @@ include_directories(
  )
 
  target_link_libraries(marker_system_node
+   ${catkin_LIBRARIES}
+ )
+
+ target_link_libraries(app_msys_node
    ${catkin_LIBRARIES}
  )
 

@@ -20,7 +20,8 @@
 #include "ros/ros.h"
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
-#include <tf/transform_listener.h>	
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>	
 #include <sstream>
 #include <ar_pose/ARMarker.h>		// In case this doesn't work, please check CMakeLists.text and
 					// include the directory where ARMarker.h is.
@@ -72,7 +73,7 @@ double odom_pos_x = 0, odom_pos_y = 0, odom_pos_th = 0;
 
 
 // Camera that is updating the marker position
-int n_camera = 1;
+int n_camera = 0;
 // Number of times that the other camera has update the marker position
 // without getting any update of the first one. In case we overpass one
 // limit, this other camera will start updating the marker position instead
@@ -85,6 +86,7 @@ void global_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera);
 void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_number);
 void odom_Callback(const nav_msgs::OdometryConstPtr& odometry);
 
+bool correct_Detection(tf::Vector3 vec, tf::Quaternion quat, int camera);
 
 
 

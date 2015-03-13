@@ -31,17 +31,21 @@
 #include <nav_msgs/Odometry.h>
 #include <math.h>
 
+#include <time.h>
 
-# define M_PI           3.14159265358979323846  /* pi */
-# define NUMBER_TF       20 /* Number of times that we get a tf to get the mean value */  
+
+# define M_PI           3.14159265358979323846  	/* pi */
+# define NUMBER_TF    	20 	/* Number of times that we get a tf to get the mean value */  
+# define NUMBER_CP     	3 	/* Number of check point markers, 2*number of check points */  
+# define NUMBER_CP_MARK	NUMBER_CP*2	/* Number of check point markers, 2*number of check points */  
 
 
 
 // For publishing the position of the map frame
-tf::Transform 	transformMap, tcam1, tcam2,
-// For publishing the position of the global frame
-		global_to_cam1,
-		global_to_cam2,
+tf::Transform 	transformMap,
+// For publishing the position of the check point frames
+		cp_to_cam1[NUMBER_CP_MARK],
+		cp_to_cam2[NUMBER_CP_MARK],
 // For publishing the position of the marker frame (robot)
 		cam_to_robot,
 // For publishing the rest of frames
@@ -49,45 +53,31 @@ tf::Transform 	transformMap, tcam1, tcam2,
 
 static tf::TransformBroadcaster *br;
 
-// Counters to check if we got the global marker position enough times
-int count_c1 = 0, count_c2 = 0;
+// Counters to check if we got the check point positions enough times
+int count_c1[NUMBER_CP_MARK] = {}, count_c2[NUMBER_CP_MARK] = {};
+
+// Which camera has discovered each check point. 0 = no one, 1= cam1, 2= cam2
+int cam_number_cp[NUMBER_CP_MARK] = {};
 
 // Mean position of global frames
-tf::Vector3 	meanP_to_cam1(0.0, 0.0, 0.0),
-		meanP_to_cam2(0.0, 0.0, 0.0);
+tf::Vector3 	meanP_to_cam1[NUMBER_CP_MARK],
+		meanP_to_cam2[NUMBER_CP_MARK];
 
 
 // Subscriber to the markers pose
-ros::Subscriber		*global_cam1, 
-			*global_cam2, 
-			*marker1_cam1, 
-			*marker1_cam2;
+//ros::Subscriber		*cps_cam1[NUMBER_CP_MARK], 
+//			*cps_cam2[NUMBER_CP_MARK];
+
+ros::Subscriber		*cps_cam1, 
+			*cps_cam2;
 
 // Subscriber for the odometry of the robot
 ros::Subscriber		*odom_sub;
 
-// Odometry pose of the robot in the instant that the marker was detected for last time
-double prev_pos_x = 0, prev_pos_y = 0, prev_pos_th = 0; 
-// Latest odometry pose of the robot
-double odom_pos_x = 0, odom_pos_y = 0, odom_pos_th = 0;
 
 
-// Camera that is updating the marker position
-int n_camera = 0;
-// Number of times that the other camera has update the marker position
-// without getting any update of the first one. In case we overpass one
-// limit, this other camera will start updating the marker position instead
-int n_times = 0;
-#define TIME_LIMIT 5
 
-void create_map_frame(void);
-
-void global_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera);
-void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_number);
-void odom_Callback(const nav_msgs::OdometryConstPtr& odometry);
-
-bool correct_Detection(tf::Vector3 vec, tf::Quaternion quat, int camera);
-
+void cp_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int check_point);
 
 
 

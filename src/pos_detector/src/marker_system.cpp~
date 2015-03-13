@@ -86,6 +86,10 @@ int main(int argc, char **argv)
 
     // Send position map frame
     br->sendTransform(tf::StampedTransform(transformMap, ros::Time::now(), "mean_global", "map"));
+
+    // prueba
+    br->sendTransform(tf::StampedTransform(tcam1, ros::Time::now(), "camera_left", "cam_left"));
+    br->sendTransform(tf::StampedTransform(tcam1, ros::Time::now(), "camera_right", "cam_right"));
     
     loop_rate.sleep();
   }
@@ -96,40 +100,52 @@ int main(int argc, char **argv)
 
 
 void create_map_frame(void) {
-	tf::Quaternion tfqt,tfqt2; // QUITAR TFQT2
-	//double yaw(0.0), pitch(-M_PI / 2.0) ,roll(0.0);
+	tf::Quaternion tfqt,tfqt2;
+
 	double yaw(M_PI), pitch(M_PI / 2.0) ,roll(0.0);
+
 	tfqt.setEuler 	( 0.0, pitch, 0.0 ) ;	
-	tfqt2.setEuler 	( yaw, 0.0, 0.0 ) ;	
+	tfqt2.setEuler 	( yaw, 0.0, 0.0 ) ;
+
 	transformMap.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
 	transformMap.setRotation(tfqt*tfqt2);
 
+
+	// prueba
+	tf::Quaternion blablar = tf::createIdentityQuaternion();
+
+	tcam1.setOrigin( tf::Vector3(0.0, 0.0, 0.1) );	
+tcam1.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
+	tcam1.setRotation(blablar);
+
+	//tcam2.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
+	//tcam2.setRotation(blablar);
+
+}
+
+bool correct_Detection(tf::Vector3 vec, tf::Quaternion quat, int camera) {
+
+	if(vec.getZ() > 0.14) {
+		std::cout << "False detection cam " << camera << ", Z coordinate too high. Value: " << vec.getZ() << std::endl;
+		return false;	}
+	if(vec.getZ() < 0.07)  {
+		std::cout << "False detection cam " << camera << ", Z coordinate too low. Value: " << vec.getZ() << std::endl;
+		return false;	}
+	if(fabs (quat.getX()) > 0.01) {
+		std::cout << "False detection cam " << camera << ", quaternion not valid, too much rotation in X axis. Value: " << vec.getZ() << std::endl;
+		return false;	}
+	if(fabs (quat.getY()) > 0.01) {
+		std::cout << "False detection cam " << camera << ", quaternion not valid, too much rotation in Y axis. Value: " << vec.getZ() << std::endl;
+		return false;	}
+
+
+	return true;
 }
 
 
 void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_number) {
 
-
-	// First marker detection
-	if(n_camera == 0)
-	n_camera = camera;
-	// Only one camera will update the tf
-	// In case that camera has been inactive for a while the other
-	// will take over the control of updating the pose of the marker
-	if(n_camera != camera) {
-		n_times++;
-		if(n_times > TIME_LIMIT) {
-			if(n_camera == 1) n_camera = 2;
-			else if(n_camera == 2) n_camera = 1;
-			n_times = 0;
-		} else {
-			// We don't update the information in tf
-			return; 
-		}
-	} else {
-		n_times = 0;
-	}
-
+	// Pose of the frame
 	tf::Vector3 position(marker->pose.pose.position.x, marker->pose.pose.position.y, marker->pose.pose.position.z);
 	tf::Quaternion q(marker->pose.pose.orientation.x, marker->pose.pose.orientation.y,
 					marker->pose.pose.orientation.z, marker->pose.pose.orientation.w);
@@ -151,6 +167,83 @@ void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_
 		std::cout << "Fixing cam position - marker: " << m_number << " cam: " << camera << std::endl;
 	}
 
+
+	// Check if the marker detection was correct
+	
+	tf::Transformer tftransf;
+	tf::Stamped <tf::Vector3> stamped_in_vec;
+	tf::Stamped <tf::Quaternion> stamped_in_quat;
+
+	tf::Vector3 	out_vec;
+	tf::Quaternion 	out_quat;
+	
+	// Vector of the marker
+	stamped_in_vec.stamp_ = ros::Time(0);
+	stamped_in_vec.setData (position);
+	if(camera == 1) stamped_in_vec.frame_id_ = "camera_left";
+	else if(camera == 2) stamped_in_vec.frame_id_ = "camera_right";
+
+	// Quaternion of the marker
+	stamped_in_quat.stamp_ = ros::Time(0);
+	stamped_in_quat.setData (q);
+	if(camera == 1) stamped_in_quat.frame_id_ = "camera_left";
+	else if(camera == 2) stamped_in_quat.frame_id_ = "camera_right";
+
+	// We change the pose compared to global coordinates
+	if(camera == 1) {
+		out_vec		= global_to_cam1.inverse() * stamped_in_vec;
+		out_quat 	= global_to_cam1.inverse() * stamped_in_quat;
+	} else if(camera == 2) {
+		out_vec 	= global_to_cam2.inverse() * stamped_in_vec;
+		out_quat 	= global_to_cam2.inverse() * stamped_in_quat;
+	}
+
+	// In case it's a false detection we stop
+	if(!correct_Detection(out_vec, out_quat, camera)) return;
+
+	/*std::cout << "Marker comp camera ( " << stamped_in_vec.getX()  << " , " << stamped_in_vec.getY()  << " , " 
+					<< stamped_in_vec.getZ()  << " ) CAM = " << camera << std::endl;
+	std::cout << "Marker comp mean_global ( " << out_vec.getX()  << " , " << out_vec.getY()  << " , " 
+				<< out_vec.getZ()  << " )  CAM = " << camera << std::endl;
+
+	std::cout << "QUAT comp camera ( " << stamped_in_quat.getX()  << " , " << stamped_in_quat.getY() << " , " 
+						<< stamped_in_quat.getZ()  << " , " << stamped_in_quat.getW()  << " ) CAM = " 
+						<< camera << std::endl;
+	std::cout << "QUAT comp mean_global ( " << out_quat.getX()  << " , " << out_quat.getY() << " , " 
+						<< out_quat.getZ()  << " , " << out_quat.getW()  << " ) CAM = " 
+						<< camera << std::endl;*/
+
+
+
+
+
+
+	
+	// Only one camera will update the tf
+	// In case that camera has been inactive for a while the other
+	// will take over the control of updating the pose of the marker
+
+	// First marker detection
+	if(n_camera == 0) n_camera = camera;
+	
+	if(n_camera != camera) {
+		n_times++;
+		if(n_times > TIME_LIMIT) {
+			if(n_camera == 1) n_camera = 2;
+			else if(n_camera == 2) n_camera = 1;
+			n_times = 0;
+		} else {
+			// We don't update the information in tf
+			return; 
+		}
+	} else {
+		n_times = 0;
+	}
+
+	
+
+
+	// Create the transform and publish it
 	cam_to_robot.setOrigin( position );
 	cam_to_robot.setRotation( q );
 
@@ -165,6 +258,10 @@ void marker_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera, int m_
 	prev_pos_x  	= 	odom_pos_x;
 	prev_pos_y  	= 	odom_pos_y;
 	prev_pos_th 	= 	odom_pos_th; 
+
+
+	
+	
 }
 
 void global_Callback(const ar_pose::ARMarkerConstPtr& marker, int camera) {
@@ -242,7 +339,7 @@ void odom_Callback(const nav_msgs::OdometryConstPtr& odometry) {
 	odom_pos_y 	= odometry->pose.pose.position.y; 
 	odom_pos_th 	= tf::getYaw(odometry->pose.pose.orientation);
 
-	std::cout << "getYaw " << odom_pos_th << std::endl;
+	//std::cout << "getYaw " << odom_pos_th << std::endl;
 
 	// Difference between this odometry and the odometry when the marker was found
 	double x_dif, y_dif, th_dif;
